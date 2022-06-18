@@ -63,32 +63,28 @@ func CheckPasswordHash(password string, hash string) bool {
 	return err == nil
 }
 
-func ValidateToken(loginJWTToken string) (role string, err error) {
+func ValidateToken(loginJWTToken string) (claims jwt.MapClaims, valid bool) {
 
 	var mySigningKey = []byte("secretkey")
 
-	token, err := jwt.ParseWithClaims(
-		loginJWTToken,
-		&Models.JWTClaim{},
-		func(token *jwt.Token) (interface{}, error) {
-			return []byte(mySigningKey), nil
-		},
-	)
-	if err != nil {
-		fmt.Errorf("Something Went Wrong: %s", err.Error())
-		return "", err
-	}
-	claims, ok := token.Claims.(*Models.JWTClaim)
+	token, err := jwt.Parse(loginJWTToken, func(token *jwt.Token) (interface{}, error) {
+		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			return nil, fmt.Errorf("There was an error in parsing")
+		}
+		return mySigningKey, nil
+	})
 
-	if !ok {
-		fmt.Errorf("Something Went Wrong: %s", err.Error())
-		return "", err
+	if err != nil {
+		fmt.Errorf("Your token has expired: %s", err.Error())
+		return nil, false
 	}
-	if claims.ExpiresAt < time.Now().Local().Unix() {
-		fmt.Errorf("Token has expired: %s", err.Error())
-		return "", err
+	
+	if claims, ok := token.Claims.(jwt.MapClaims);ok && token.Valid {
+		return claims, true
+	} else {
+		log.Printf("Invalid JWT Token")
+		return nil, false
 	}
-	return "role", nil
 }
 
 func (client ClientHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -162,7 +158,7 @@ func (client ClientHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	case "get-balance":
 		JWTToken := r.Header.Get("Authorization")
-		TokenArray := strings.Split(JWTToken, " ");
+		TokenArray := strings.Split(JWTToken, " ")
 		if TokenArray[1] == "" {
 			fmt.Println("No JWT Token found")
 			json.NewEncoder(w).Encode(&Models.Response{
@@ -171,9 +167,9 @@ func (client ClientHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		role, err := ValidateToken(TokenArray[1])
-		if err != nil {
-			fmt.Println("JWT Token error", err)
+		claims, valid := ValidateToken(TokenArray[1])
+		if !(valid){
+			fmt.Println("JWT Token error")
 			json.NewEncoder(w).Encode(&Models.Response{
 				Code:    400,
 				Message: "JWT Token err",
@@ -181,8 +177,8 @@ func (client ClientHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if role != "manufacturer" {
-			fmt.Println("User role err", err)
+		if claims["role"] != "manufacturer" {
+			fmt.Println("User role err")
 			json.NewEncoder(w).Encode(&Models.Response{
 				Code:    400,
 				Message: "User role err",
