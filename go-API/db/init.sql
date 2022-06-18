@@ -1,0 +1,20 @@
+BEGIN;
+
+CREATE TABLE IF NOT EXISTS users (
+    id VARCHAR(26) NOT NULL,
+    name VARCHAR(25) NOT NULL,
+    username VARCHAR(12) NOT NULL,
+    email VARCHAR(25) NOT NULL,
+    passhash VARCHAR NOT NULL,
+    role VARCHAR(25) NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS items (
+    id VARCHAR(26) NOT NULL,
+    brand CHAR(26) NOT NULL,
+    price INT NOT NULL,
+    ownerid VARCHAR(26) NOT NULL
+);
+
+
+COMMIT;

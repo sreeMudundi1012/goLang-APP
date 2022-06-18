@@ -1,0 +1,18 @@
+version: "3"
+services:
+  db:
+    image: "postgres:13"
+    healthcheck:
+      timeout: 45s
+      interval: 10s
+      retries: 10
+    restart: always
+    container_name: "postgresDB"
+    environment:
+      POSTGRES_USER: "postgres"
+      POSTGRES_PASSWORD: "test"
+      POSTGRES_DB: "luxury_items"
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
